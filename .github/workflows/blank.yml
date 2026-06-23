@@ -1,4 +1,4 @@
-name: Auto Build APK
+name: Auto Build from ZIP
 
 on:
   workflow_dispatch:
@@ -9,23 +9,21 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Extract and find project
+    - name: Extract and fix structure
       run: |
-        # Jika ada ZIP, ekstrak
-        if [ -f "RIDZSENSIX.zip" ]; then
-          unzip RIDZSENSIX.zip
+        for f in *.zip; do
+          if [ -f "$f" ]; then
+            unzip -o "$f" -d extracted/
+          fi
+        done
+        APP_DIR=$(find extracted -name "app" -type d | head -1)
+        if [ -n "$APP_DIR" ]; then
+          PROJECT_DIR=$(dirname "$APP_DIR")
+          cp -r "$PROJECT_DIR"/* ./
+        else
+          cp -r extracted/* ./
         fi
-
-        # Cari folder yang berisi app/
-        APP_PATH=$(find . -name "app" -type d | head -1)
-        if [ -n "$APP_PATH" ]; then
-          echo "Menemukan app di: $APP_PATH"
-          # Pindahkan semua file ke root
-          PROJECT_DIR=$(dirname $APP_PATH)
-          cp -r $PROJECT_DIR/* ./
-        fi
-
-        echo "📂 Struktur root:"
+        rm -rf extracted
         ls -la
 
     - name: Set up JDK 17
