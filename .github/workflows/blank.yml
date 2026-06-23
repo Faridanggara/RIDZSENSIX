@@ -1,26 +1,51 @@
-plugins {
-    id 'com.android.application'
-}
+name: Auto Build APK
 
-android {
-    namespace 'com.ridzsensix'
-    compileSdk 33
+on:
+  workflow_dispatch:
 
-    defaultConfig {
-        applicationId "com.ridzsensix"
-        minSdk 24
-        targetSdk 33
-        versionCode 1
-        versionName "1.0"
-    }
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
 
-    buildTypes {
-        debug {
-            minifyEnabled false
-        }
-    }
-}
+    - name: Extract and find project
+      run: |
+        # Jika ada ZIP, ekstrak
+        if [ -f "RIDZSENSIX.zip" ]; then
+          unzip RIDZSENSIX.zip
+        fi
 
-dependencies {
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-}
+        # Cari folder yang berisi app/
+        APP_PATH=$(find . -name "app" -type d | head -1)
+        if [ -n "$APP_PATH" ]; then
+          echo "Menemukan app di: $APP_PATH"
+          # Pindahkan semua file ke root
+          PROJECT_DIR=$(dirname $APP_PATH)
+          cp -r $PROJECT_DIR/* ./
+        fi
+
+        echo "📂 Struktur root:"
+        ls -la
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Build APK
+      run: |
+        if [ -f "gradlew" ]; then
+          chmod +x gradlew
+          ./gradlew assembleDebug
+        else
+          sudo apt update && sudo apt install gradle -y
+          gradle assembleDebug --no-daemon
+        fi
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-debug
+        path: app/build/outputs/apk/debug/*.apk
