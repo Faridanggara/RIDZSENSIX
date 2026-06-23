@@ -1,0 +1,36 @@
+name: Extract ZIP and Build APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Extract ZIP
+      run: |
+        if [ -f "RIDZSENSIX.zip" ]; then
+          unzip RIDZSENSIX.zip -d RIDZSENSIX
+          mv RIDZSENSIX/* .
+          rm -rf RIDZSENSIX RIDZSENSIX.zip
+        fi
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Install Gradle
+      run: sudo apt update && sudo apt install gradle -y
+
+    - name: Build APK
+      run: gradle assembleDebug --no-daemon
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-debug
+        path: app/build/outputs/apk/debug/*.apk
