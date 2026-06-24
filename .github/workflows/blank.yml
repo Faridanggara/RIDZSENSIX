@@ -1,4 +1,4 @@
-name: Build APK Final
+name: Build APK V2 FULL
 
 on:
   workflow_dispatch:
@@ -9,42 +9,28 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Extract ZIP
+    - name: Hapus file lama & ekstrak ZIP baru
       run: |
-        for f in *.zip; do
-          if [ -f "$f" ]; then
-            unzip -o "$f" -d extracted/
-          fi
-        done
-        APP_DIR=$(find extracted -name "app" -type d | head -1)
-        if [ -n "$APP_DIR" ]; then
-          PROJECT_DIR=$(dirname "$APP_DIR")
-          cp -r "$PROJECT_DIR"/* ./
+        rm -rf app/ build.gradle settings.gradle gradle.properties gradle/ gradlew
+        if [ -f "RIDZSENSIX_V2_FULL.zip" ]; then
+          unzip -o RIDZSENSIX_V2_FULL.zip
+          echo "✅ Menggunakan RIDZSENSIX_V2_FULL.zip"
         else
-          cp -r extracted/* ./
+          echo "❌ RIDZSENSIX_V2_FULL.zip tidak ditemukan!"
+          exit 1
         fi
-        rm -rf extracted
         ls -la
 
-    - name: Set up JDK 17
+    - name: Setup JDK 17
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: '17'
 
-    - name: Install Gradle 7.5 (PAKSA)
+    - name: Build APK (clean)
       run: |
-        wget https://services.gradle.org/distributions/gradle-7.5-bin.zip
-        unzip gradle-7.5-bin.zip -d /opt/gradle
-        export PATH=/opt/gradle/gradle-7.5/bin:$PATH
-        echo "GRADLE_HOME=/opt/gradle/gradle-7.5" >> $GITHUB_ENV
-        echo "/opt/gradle/gradle-7.5/bin" >> $GITHUB_PATH
-        gradle --version
-
-    - name: Build APK
-      run: |
-        export PATH=/opt/gradle/gradle-7.5/bin:$PATH
-        gradle assembleDebug --no-daemon --stacktrace
+        chmod +x gradlew
+        ./gradlew clean assembleDebug
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
