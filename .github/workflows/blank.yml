@@ -1,4 +1,4 @@
-name: Build APK V2 FULL (Force Gradle 7.5)
+name: Build APK V2 (Gradle 7.5 Manual)
 
 on:
   workflow_dispatch:
@@ -9,7 +9,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Hapus semua file lama & ekstrak ZIP
+    - name: Hapus file lama & ekstrak ZIP
       run: |
         rm -rf app/ build.gradle settings.gradle gradle.properties gradle/ gradlew
         if [ -f "RIDZSENSIX_V2_FULL.zip" ]; then
@@ -26,9 +26,7 @@ jobs:
           cp -r extracted/* ./
         fi
         rm -rf extracted
-        # Hapus wrapper agar tidak dipakai
         rm -rf gradlew gradle/wrapper
-        echo "📂 Struktur root:"
         ls -la
 
     - name: Setup JDK 17
@@ -37,19 +35,18 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
-    - name: Install Gradle 7.5 (pastikan)
+    - name: Download & Install Gradle 7.5
       run: |
-        sudo apt update
-        sudo apt install gradle -y
-        # Cek versi yang terinstall
-        gradle --version
+        wget https://services.gradle.org/distributions/gradle-7.5-bin.zip
+        unzip -d /opt/gradle gradle-7.5-bin.zip
+        export PATH=/opt/gradle/gradle-7.5/bin:$PATH
+        echo "GRADLE_HOME=/opt/gradle/gradle-7.5" >> $GITHUB_ENV
+        echo "/opt/gradle/gradle-7.5/bin" >> $GITHUB_PATH
+        /opt/gradle/gradle-7.5/bin/gradle --version
 
-    - name: Build APK (paksa pakai gradle 7.5)
+    - name: Build APK (pakai Gradle 7.5)
       run: |
-        # Pastikan gradle yang dipakai adalah yang di /usr/bin/gradle
-        export PATH=/usr/bin:$PATH
-        gradle --version
-        gradle assembleDebug --no-daemon
+        /opt/gradle/gradle-7.5/bin/gradle assembleDebug --no-daemon
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
