@@ -1,4 +1,4 @@
-name: Build APK V2 FULL (Force)
+name: Build APK (Force AndroidX)
 
 on:
   workflow_dispatch:
@@ -9,18 +9,21 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Ekstrak ZIP V2 FULL
+    - name: Ekstrak ZIP & paksa gradle.properties
       run: |
+        # Hapus file lama
         rm -rf app/ build.gradle settings.gradle gradle.properties gradle/ gradlew
-        ZIP_FILE="RIDZSENSIX_V2_FULL.zip"
-        if [ ! -f "$ZIP_FILE" ]; then
-          echo "❌ $ZIP_FILE tidak ditemukan!"
-          echo "📂 Daftar file yang ada:"
-          ls -la
+
+        # Cari semua file .zip
+        ZIP_FILE=$(ls *.zip 2>/dev/null | head -1)
+        if [ -z "$ZIP_FILE" ]; then
+          echo "❌ Tidak ada file ZIP!"
           exit 1
         fi
         echo "✅ Menggunakan: $ZIP_FILE"
         unzip -o "$ZIP_FILE" -d extracted/
+
+        # Cari folder app/
         APP_DIR=$(find extracted -name "app" -type d | head -1)
         if [ -n "$APP_DIR" ]; then
           PROJECT_DIR=$(dirname "$APP_DIR")
@@ -29,6 +32,16 @@ jobs:
           cp -r extracted/* ./
         fi
         rm -rf extracted
+
+        # TULIS ULANG gradle.properties (PAKSA!)
+        echo "org.gradle.jvmargs=-Xmx1024m" > gradle.properties
+        echo "android.useAndroidX=true" >> gradle.properties
+        echo "android.enableJetifier=true" >> gradle.properties
+
+        # Tampilkan isi gradle.properties untuk verifikasi
+        echo "📄 Isi gradle.properties:"
+        cat gradle.properties
+
         echo "📂 Struktur root:"
         ls -la
 
@@ -38,7 +51,7 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
-    - name: Download Gradle 7.5
+    - name: Download & Install Gradle 7.5
       run: |
         wget https://services.gradle.org/distributions/gradle-7.5-bin.zip
         unzip -d /opt/gradle gradle-7.5-bin.zip
@@ -47,10 +60,11 @@ jobs:
 
     - name: Build APK
       run: |
+        export PATH=/opt/gradle/gradle-7.5/bin:$PATH
         /opt/gradle/gradle-7.5/bin/gradle assembleDebug --no-daemon
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: app-debug
-        path: app/build/outputs/apk/debug/*.apkp
+        path: app/build/outputs/apk/debug/*.apk
