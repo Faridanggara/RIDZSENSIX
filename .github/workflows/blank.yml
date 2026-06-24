@@ -1,4 +1,4 @@
-name: Build APK V2 FULL
+name: Build APK V2 FULL (Gradle Global)
 
 on:
   workflow_dispatch:
@@ -9,16 +9,27 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Hapus file lama & ekstrak ZIP baru
+    - name: Hapus file lama & ekstrak ZIP
       run: |
         rm -rf app/ build.gradle settings.gradle gradle.properties gradle/ gradlew
         if [ -f "RIDZSENSIX_V2_FULL.zip" ]; then
-          unzip -o RIDZSENSIX_V2_FULL.zip
-          echo "✅ Menggunakan RIDZSENSIX_V2_FULL.zip"
+          unzip -o RIDZSENSIX_V2_FULL.zip -d extracted/
         else
-          echo "❌ RIDZSENSIX_V2_FULL.zip tidak ditemukan!"
+          echo "❌ ZIP RIDZSENSIX_V2_FULL.zip tidak ditemukan!"
           exit 1
         fi
+        # Cari folder yang mengandung app/ dan pindahkan ke root
+        APP_DIR=$(find extracted -name "app" -type d | head -1)
+        if [ -n "$APP_DIR" ]; then
+          PROJECT_DIR=$(dirname "$APP_DIR")
+          echo "✅ Menemukan proyek di: $PROJECT_DIR"
+          cp -r "$PROJECT_DIR"/* ./
+        else
+          echo "⚠️ Folder app tidak ditemukan, copy semua file extracted"
+          cp -r extracted/* ./
+        fi
+        rm -rf extracted
+        echo "📂 Struktur root setelah ekstrak:"
         ls -la
 
     - name: Setup JDK 17
@@ -27,10 +38,14 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
-    - name: Build APK (clean)
+    - name: Install Gradle
       run: |
-        chmod +x gradlew
-        ./gradlew clean assembleDebug
+        sudo apt update
+        sudo apt install gradle -y
+        gradle --version
+
+    - name: Build APK (pakai Gradle global)
+      run: gradle assembleDebug --no-daemon
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
