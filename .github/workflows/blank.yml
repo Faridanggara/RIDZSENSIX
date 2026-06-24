@@ -1,4 +1,4 @@
-name: Build APK V2 (Gradle 7.5 Manual)
+name: Build APK (Auto Detect ZIP)
 
 on:
   workflow_dispatch:
@@ -9,24 +9,35 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Hapus file lama & ekstrak ZIP
+    - name: Cari dan ekstrak ZIP
       run: |
+        # Hapus file lama
         rm -rf app/ build.gradle settings.gradle gradle.properties gradle/ gradlew
-        if [ -f "RIDZSENSIX_V2_FULL.zip" ]; then
-          unzip -o RIDZSENSIX_V2_FULL.zip -d extracted/
-        else
-          echo "❌ ZIP tidak ditemukan!"
+
+        # Cari semua file .zip di root
+        ZIP_FILE=$(ls *.zip 2>/dev/null | head -1)
+        if [ -z "$ZIP_FILE" ]; then
+          echo "❌ Tidak ada file ZIP di root!"
+          echo "📂 Daftar file yang ada:"
+          ls -la
           exit 1
         fi
+
+        echo "✅ Menemukan ZIP: $ZIP_FILE"
+        unzip -o "$ZIP_FILE" -d extracted/
+
+        # Cari folder app/
         APP_DIR=$(find extracted -name "app" -type d | head -1)
         if [ -n "$APP_DIR" ]; then
           PROJECT_DIR=$(dirname "$APP_DIR")
+          echo "✅ Menemukan proyek di: $PROJECT_DIR"
           cp -r "$PROJECT_DIR"/* ./
         else
+          echo "⚠️ Folder app tidak ditemukan, copy semua file extracted"
           cp -r extracted/* ./
         fi
         rm -rf extracted
-        rm -rf gradlew gradle/wrapper
+        echo "📂 Struktur root setelah ekstrak:"
         ls -la
 
     - name: Setup JDK 17
@@ -35,18 +46,18 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
-    - name: Download & Install Gradle 7.5
+    - name: Build APK
       run: |
-        wget https://services.gradle.org/distributions/gradle-7.5-bin.zip
-        unzip -d /opt/gradle gradle-7.5-bin.zip
-        export PATH=/opt/gradle/gradle-7.5/bin:$PATH
-        echo "GRADLE_HOME=/opt/gradle/gradle-7.5" >> $GITHUB_ENV
-        echo "/opt/gradle/gradle-7.5/bin" >> $GITHUB_PATH
-        /opt/gradle/gradle-7.5/bin/gradle --version
-
-    - name: Build APK (pakai Gradle 7.5)
-      run: |
-        /opt/gradle/gradle-7.5/bin/gradle assembleDebug --no-daemon
+        if [ -f "gradlew" ]; then
+          chmod +x gradlew
+          ./gradlew assembleDebug
+        else
+          # Install Gradle 7.5 manual
+          wget https://services.gradle.org/distributions/gradle-7.5-bin.zip
+          unzip -d /opt/gradle gradle-7.5-bin.zip
+          export PATH=/opt/gradle/gradle-7.5/bin:$PATH
+          /opt/gradle/gradle-7.5/bin/gradle assembleDebug --no-daemon
+        fi
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
